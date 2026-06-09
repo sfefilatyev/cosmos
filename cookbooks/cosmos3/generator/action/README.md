@@ -5,13 +5,24 @@ PyTorch (Cosmos Framework) and vLLM-Omni. Both backends use the sample assets
 under [`assets/`](./assets) and cover two tasks:
 
 - **Forward dynamics (`fd`)** — predict future observations from a start image
-  plus an action trajectory (AV, DROID, and UMI robotics examples).
+  plus an action trajectory (AV, DROID, and UMI robotics examples) using the Cosmos3-Nano.
 - **Inverse dynamics (`id`)** — predict ego-motion trajectories from input AV
-  videos.
+  videos using the Cosmos3-Nano.
+- **Policy (`policy`)** — predict future observations and action trajectories from a start image, task instruction, and state for DROID robot using the Cosmos3-Nano-Policy-DROID.
 
 Environment setup for both backends is centralized in the shared
 [Cosmos3 cookbooks environment setup](../../README.md) guide; each backend below
 links to the section you need.
+
+## Table of Contents
+
+- [Run with Cosmos Framework](#run-with-cosmos-framework)
+  - [Quickstart](#quickstart)
+  - [Cosmos Framework Walkthrough](#cosmos-framework-walkthrough)
+- [Run with vLLM-Omni](#run-with-vllm-omni)
+  - [Quickstart](#quickstart-1)
+  - [Notebook walkthrough](#notebook-walkthrough)
+
 
 ## Action Definition
 
@@ -28,6 +39,8 @@ fingers.
 | Autonomous vehicle | Ego pose (9D) | 9D | Meter | Normalization | 60 frames @ 10FPS |
 | [DROID](https://arxiv.org/abs/2403.12945) | End-effector pose (9D) + gripper grasp state (1D) | 10D | Meter | Multiview concatenation, `to-OpenCV`, normalization | 16 frames @ 15FPS |
 | UMI | End-effector pose (9D) + gripper grasp state (1D) | 10D | Meter | Normalization | 16 frames @ 20FPS |
+
+Action data samples across different embodiments can be inspected interactively in the [Cosmos3 Action Viewer](https://huggingface.co/spaces/nvidia/Cosmos3-Action-Viewer) Hugging Face Space.
 
 ## Run with Cosmos Framework
 
@@ -52,15 +65,17 @@ assemble ready-to-run specs for AV, DROID, and UMI examples from the checked-in
 assets under [`assets/`](./assets). Outputs are written under the framework
 checkout.
 
-### Cosmos Framework Notebook Walkthrough
+### Cosmos Framework Walkthrough
 
-The Cosmos Framework notebooks build their input spec, run inference, and
+The Cosmos Framework build their input spec, run inference, and
 visualize the generated videos:
 
 - [`run_fd_with_cosmos_framework.ipynb`](./run_fd_with_cosmos_framework.ipynb) —
-  forward dynamics for AV, DROID, and UMI robotics examples.
+  forward dynamics for AV, DROID, and UMI robotics examples using Cosmos3-Nano.
 - [`run_id_with_cosmos_framework.ipynb`](./run_id_with_cosmos_framework.ipynb) —
-  inverse dynamics, predicting ego-motion trajectories from input AV videos.
+  inverse dynamics, predicting ego-motion trajectories from input AV videos using Cosmos3-Nano.
+- [`run_policy_with_cosmos_framework.md`](./run_policy_with_cosmos_framework.md) - policy, predicting future observations and action trajectories for DROID robot using Cosmos3-Nano-Policy-DROID.
+
 
 ## Run with vLLM-Omni
 
@@ -91,7 +106,7 @@ generation (see [`run_fd_with_vllm.ipynb`](./run_fd_with_vllm.ipynb) and
 The notebooks build the full request body for AV, DROID, and UMI examples,
 including autoregressive chunked generation for the robotics examples.
 
-### Notebook walkthrough
+### VLLM-Omni Notebook Walkthrough
 
 The vLLM-Omni notebooks send requests through the OpenAI-compatible video API and
 write outputs under `outputs/cosmos3_action_vllm/`:
@@ -100,6 +115,8 @@ write outputs under `outputs/cosmos3_action_vllm/`:
   DROID, and UMI robotics examples.
 - [`run_id_with_vllm.ipynb`](./run_id_with_vllm.ipynb) — inverse dynamics,
   predicting ego-motion trajectories from input AV videos.
+
+
 
 ## TODO
 

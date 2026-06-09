@@ -7,7 +7,8 @@
 
 <p align="center">
   <a href="https://www.nvidia.com/en-us/ai/cosmos/">Website</a> |
-  <a href="https://github.com/NVIDIA/cosmos-framework">Framework</a>
+  <a href="https://github.com/NVIDIA/cosmos-framework">Framework</a> |
+  <a href="https://huggingface.co/collections/nvidia/cosmos3">Models</a>
 </p>
 
 ## Table of Contents
@@ -27,6 +28,7 @@
     - [Generator with vLLM-Omni](#generator-with-vllm-omni)
     - [Reasoner with Transformers](#reasoner-with-transformers)
     - [Reasoner with vLLM](#reasoner-with-vllm)
+    - [Reasoner with NIM](#reasoner-with-nim)
   - [Troubleshooting](#troubleshooting)
     - [Which CUDA version should I use?](#which-cuda-version-should-i-use)
     - [Which base container should I use?](#which-base-container-should-i-use)
@@ -36,6 +38,7 @@
   - [Choosing an Integration](#choosing-an-integration)
   - [Examples](#examples)
   - [Inference Benchmarks](#inference-benchmarks)
+  - [Finetune](#finetune)
   - [Limitations](#limitations)
 - [Ecosystem](#ecosystem)
 - [News](#news)
@@ -47,7 +50,7 @@ NVIDIA Cosmos is an open platform of world models, datasets, and tools that enab
 
 ## Cosmos 3
 
-**Cosmos 3** is our newest model family [[Report]](https://research.nvidia.com/labs/cosmos-lab/cosmos3/technical-report.pdf) [[Website]](https://research.nvidia.com/labs/cosmos-lab/cosmos3/). It is a suite of omnimodal world models designed to jointly process and generate language, images, video, audio, and action sequences within a unified Mixture-of-Transformers architecture. By supporting highly flexible input-output configurations, it seamlessly unifies critical modalities for Physical AI — effectively subsuming vision-language models, video generators, world simulators, and world-action models into a single framework.
+**Cosmos 3** is our newest model family [[Models]](<a href="https://huggingface.co/collections/nvidia/cosmos3">) [[Report]](https://research.nvidia.com/labs/cosmos-lab/cosmos3/technical-report.pdf) [[Website]](https://research.nvidia.com/labs/cosmos-lab/cosmos3/). It is a suite of omnimodal world models designed to jointly process and generate language, images, video, audio, and action sequences within a unified Mixture-of-Transformers architecture. By supporting highly flexible input-output configurations, it seamlessly unifies critical modalities for Physical AI — effectively subsuming vision-language models, video generators, world simulators, and world-action models into a single framework.
 
 Cosmos 3 exposes two runtime surfaces:
 
@@ -282,7 +285,7 @@ See the [Cosmos 3 Diffusers documentation](https://huggingface.co/docs/diffusers
 
 Use vLLM-Omni for Generator production inference behind an OpenAI-compatible API. This integration loads the full Cosmos 3 checkpoint, including the Qwen3-VL-based reasoner path and the diffusion generation path. For understanding-only tasks that return text, use [Reasoner with vLLM](#reasoner-with-vllm) instead, which loads only the reasoner.
 
-> **Compatibility status:** Cosmos 3 Generator support is being upstreamed in [vllm-project/vllm-omni#3454](https://github.com/vllm-project/vllm-omni/pull/3454), which adds text-to-image, text-to-video, and image-to-video; follow-up PRs add video-to-video, video-with-sound, and action. Until they merge, the `vllm/vllm-omni:cosmos3` Docker image is the official build with every modality supported; the PR-branch install below covers only the three merged modes.
+> **Compatibility status:** Cosmos 3 Generator support has landed in [vllm-project/vllm-omni](https://github.com/vllm-project/vllm-omni) `main`: text-to-image, text-to-video, and image-to-video ([#3454](https://github.com/vllm-project/vllm-omni/pull/3454)) and video-with-sound ([#4073](https://github.com/vllm-project/vllm-omni/pull/4073)) are merged; action (policy / forward-dynamics) is in review ([#4102](https://github.com/vllm-project/vllm-omni/pull/4102)) and video-to-video is planned. The `vllm/vllm-omni:cosmos3` Docker image remains the easiest all-in-one build. For current setup and per-modality usage, see the maintained recipes: [Cosmos3-Nano](https://github.com/vllm-project/vllm-omni/blob/main/recipes/cosmos3/Cosmos3-Nano.md) and [Cosmos3-Super](https://github.com/vllm-project/vllm-omni/blob/main/recipes/cosmos3/Cosmos3-Super.md).
 
 Start the server from the Docker image (all modalities). Mount any directory that contains local media or action files you want the server to read.
 
@@ -317,17 +320,17 @@ Additional parallelism options:
 
 When combining parallelism options, ensure the server has enough GPUs for the product of the enabled degrees (`tensor_parallel_size` × `cfg_parallel_size` × `ulysses_degree`).
 
-To install the three merged modes (text-to-image, text-to-video, image-to-video) from the upstreaming PR branch instead of using the Docker image, create a venv and install vLLM-Omni from the PR ref, choosing the CUDA build that matches your driver:
+To install vLLM-Omni from `main` instead of using the Docker image (text-to-image, text-to-video, image-to-video, and video-with-sound are merged there; see the [Cosmos3-Nano](https://github.com/vllm-project/vllm-omni/blob/main/recipes/cosmos3/Cosmos3-Nano.md) and [Cosmos3-Super](https://github.com/vllm-project/vllm-omni/blob/main/recipes/cosmos3/Cosmos3-Super.md) recipes for per-modality usage), create a venv and install, choosing the CUDA build that matches your driver:
 
 ```shell
 uv venv --python 3.13 --seed --managed-python
 source .venv/bin/activate
 # CUDA 13 driver:
 uv pip install --torch-backend=cu130 \
-  "vllm-omni @ git+https://github.com/vllm-project/vllm-omni.git@refs/pull/3454/head"
+  "vllm-omni @ git+https://github.com/vllm-project/vllm-omni.git@main"
 # CUDA 12.8 driver:
 # uv pip install --torch-backend=cu128 \
-#   "vllm-omni @ git+https://github.com/vllm-project/vllm-omni.git@refs/pull/3454/head"
+#   "vllm-omni @ git+https://github.com/vllm-project/vllm-omni.git@main"
 ```
 
 Then run `vllm serve nvidia/Cosmos3-Nano --omni --model-class-name Cosmos3OmniDiffusersPipeline --allowed-local-media-path / --port 8000 --init-timeout 1800` directly, without the `docker run ... vllm/vllm-omni:cosmos3` wrapper.
@@ -350,7 +353,7 @@ Action modes use Cosmos 3 as a world model: they condition on an embodiment (`do
 | Inverse dynamics | `inverse_dynamics` | Video + instruction | Video + predicted action chunk |
 | Forward dynamics | `forward_dynamics` | Image + action chunk | Video |
 
-Pass embodiment settings through `extra_params`: `action_mode`, `domain_name` (for example `bridge_orig_lerobot`, `av`, or `camera_pose`), `raw_action_dim`, and `action_chunk_size`. Forward dynamics also takes an `action_path` pointing at an action file the server can read, so start the server with `--allowed-local-media-path` covering that file (for Docker, mount the file and pass the container-visible path). For the full set of robot, autonomous-vehicle, and camera-pose variants, see the [Cosmos 3 online-serving examples](https://github.com/vllm-project/vllm-omni/tree/main/examples/online_serving/cosmos3).
+Pass embodiment settings through `extra_params`: `action_mode`, `domain_name` (for example `bridge_orig_lerobot`, `av`, or `camera_pose`), `raw_action_dim`, and `action_chunk_size`. Forward dynamics also takes an `action_path` pointing at an action file the server can read, so start the server with `--allowed-local-media-path` covering that file (for Docker, mount the file and pass the container-visible path). For the full set of robot, autonomous-vehicle, and camera-pose variants, see the [Cosmos 3 vLLM-Omni recipes](https://github.com/vllm-project/vllm-omni/tree/main/recipes/cosmos3).
 
 Example video request:
 
@@ -423,10 +426,9 @@ vllm serve nvidia/Cosmos3-Nano --omni \
 
 References:
 
-- [Cosmos 3 online-serving examples](https://github.com/vllm-project/vllm-omni/tree/main/examples/online_serving/cosmos3)
+- [Cosmos 3 vLLM-Omni recipes](https://github.com/vllm-project/vllm-omni/tree/main/recipes/cosmos3)
 - [vLLM-Omni Videos API](https://docs.vllm.ai/projects/vllm-omni/en/latest/serving/videos_api/)
 - [vLLM-Omni Image Generation API](https://docs.vllm.ai/projects/vllm-omni/en/latest/serving/image_generation_api/)
-- [Cosmos 3 vLLM-Omni upstreaming PR](https://github.com/vllm-project/vllm-omni/pull/3454)
 
 </details>
 
@@ -435,7 +437,8 @@ Coming soon!
 
 #### Reasoner with vLLM
 
-Use vLLM for Reasoner production inference behind an OpenAI-compatible chat-completions API.
+<details>
+<summary>Use vLLM for Reasoner production inference behind an OpenAI-compatible chat-completions API.</summary>
 
 ```shell
 uv venv --python 3.13 --seed --managed-python
@@ -472,6 +475,108 @@ Configuration notes:
 | `--mm-encoder-tp-mode data` | Data parallelism for the visual encoder in multimodal workloads |
 | `--media-io-kwargs '{"video": {"num_frames": -1}}'` | Allows the processor to consider all available frames before downstream frame sampling |
 | `--allowed-local-media-path` | Required when requests pass local `file://` media paths |
+</details>
+
+#### Reasoner with NIM
+
+<details>
+<summary>Expand NIM Reasoner setup, container launch, and request reference</summary>
+
+Use the [Cosmos 3 Reasoner NIM](https://catalog.ngc.nvidia.com/orgs/nim/teams/nvidia/containers/cosmos3-reasoner) for the fastest path to a production-grade, OpenAI-compatible Reasoner endpoint. NIM ships a prebuilt, optimized container so you skip the vLLM dependency and CUDA-pairing setup above; it serves text outputs from text, image, and video inputs.
+
+You can try it interactively in your browser on the [cosmos3-nano-reasoner build page](https://build.nvidia.com/nvidia/cosmos3-nano-reasoner) — that playground is powered by this same NIM. See the [Cosmos Reason 3 NIM API reference](https://docs.nvidia.com/nim/vision-language-models/1.7.0/examples/cosmos-reason3/api.html) for the full request reference.
+
+The container serves two sizes, selected with `NIM_MODEL_SIZE`:
+
+| `NIM_MODEL_SIZE` | Served model name |
+| --- | --- |
+| `nano` (default) | `nvidia/cosmos3-nano-reasoner` |
+| `super` | `nvidia/cosmos3-super-reasoner` |
+
+Launch the NIM container (Nano shown; set `-e NIM_MODEL_SIZE=super` for Super). `NGC_API_KEY` must be set in your environment first — generate one from [NGC](https://catalog.ngc.nvidia.com/orgs/nim/teams/nvidia/containers/cosmos3-reasoner) and log Docker in to `nvcr.io` once (`docker login nvcr.io`, username `$oauthtoken`, password = your key).
+
+```shell
+export CONTAINER_NAME="nvidia-cosmos3-reasoner"
+export IMG_NAME="nvcr.io/nim/nvidia/cosmos3-reasoner:1.7.0"
+export LOCAL_NIM_CACHE=~/.cache/nim
+mkdir -p "$LOCAL_NIM_CACHE"
+
+docker run -it --rm --name=$CONTAINER_NAME \
+  --runtime=nvidia \
+  --gpus all \
+  --shm-size=32GB \
+  -e NGC_API_KEY=$NGC_API_KEY \
+  -e NIM_MODEL_SIZE=nano \
+  -v "$LOCAL_NIM_CACHE:/opt/nim/.cache" \
+  -u $(id -u) \
+  -p 8000:8000 \
+  $IMG_NAME
+```
+
+The OpenAI-compatible API is then available at `http://127.0.0.1:8000/v1`. Query it with `curl`:
+
+```shell
+curl -X POST 'http://127.0.0.1:8000/v1/chat/completions' \
+  -H 'Accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "nvidia/cosmos3-nano-reasoner",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": "https://github.com/nvidia-cosmos/cosmos-dependencies/raw/refs/heads/assets/cosmos3/inputs/vision/robot_153.jpg"}},
+        {"type": "text", "text": "Describe what is happening in this image in one sentence."}
+      ]}
+    ],
+    "max_tokens": 256,
+    "stream": false
+  }'
+```
+
+Or with the OpenAI Python client:
+
+```python
+from openai import OpenAI
+
+# The container exposes the OpenAI-compatible API locally; the api_key is unused.
+client = OpenAI(base_url="http://127.0.0.1:8000/v1", api_key="not-used")
+
+response = client.chat.completions.create(
+    model="nvidia/cosmos3-nano-reasoner",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {
+            "role": "user",
+            "content": [
+                {"type": "video_url", "video_url": {"url": "https://download.samplelib.com/mp4/sample-5s.mp4"}},
+                {"type": "text", "text": "List the notable events with approximate timestamps."},
+            ],
+        },
+    ],
+    max_tokens=256,
+    stream=False,
+    extra_body={"media_io_kwargs": {"video": {"fps": 4.0}}},
+)
+print(response.choices[0].message.content)
+```
+
+Inputs and request notes:
+
+| Item | Notes |
+| --- | --- |
+| Images | JPG/JPEG/PNG, passed as a public URL or base64 data URI via `image_url` |
+| Videos | MP4, passed as a public URL, base64, or pre-decoded `video_frames` via `video_url` |
+| `extra_body.media_io_kwargs` | Controls video frame sampling, e.g. `{"video": {"fps": 4.0}}` or `{"video": {"num_frames": 16}}` |
+| `extra_body.mm_processor_kwargs` | Per-image resize bounds, e.g. `{"size": {"shortest_edge": 1568, "longest_edge": 262144}}` (defaults: `shortest_edge=3136`, `longest_edge=12845056`) |
+| Explicit reasoning | Append `Answer the question in the following format: <think>\nyour reasoning\n</think>\n\n<answer>\nyour answer\n</answer>.` to the user prompt |
+
+References:
+
+- [Cosmos Reason 3 NIM API reference](https://docs.nvidia.com/nim/vision-language-models/1.7.0/examples/cosmos-reason3/api.html)
+- [cosmos3-reasoner NGC container](https://catalog.ngc.nvidia.com/orgs/nim/teams/nvidia/containers/cosmos3-reasoner)
+- [cosmos3-nano-reasoner build page](https://build.nvidia.com/nvidia/cosmos3-nano-reasoner)
+
+</details>
 
 ### Troubleshooting
 
@@ -507,6 +612,7 @@ The Cosmos Framework requires `uv >= 0.11.3` (enforced via its `pyproject.toml`)
 | Generator production inference | vLLM-Omni | API path for image, video, sound, and action outputs |
 | Reasoner research or model development | Transformers (coming soon) | Python-first path for prompts, processors, and model behavior |
 | Reasoner production inference | vLLM | OpenAI-compatible endpoint for text outputs from text and vision inputs |
+| Reasoner turnkey deployment | NIM | Prebuilt, optimized OpenAI-compatible container — no vLLM/CUDA setup |
 | Runnable setup, training, or evaluation | Cosmos Framework | Full workflow docs for setup, inference, omni-model training, and evaluation |
 
 ### Examples
@@ -524,16 +630,24 @@ We are building examples that show Cosmos 3 capabilities end to end, including w
 | Inverse dynamics with vLLM-Omni | Generator | Inverse dynamics: ego-motion trajectory prediction from input AV video, against an OpenAI-compatible vLLM-Omni server. | [Notebook](cookbooks/cosmos3/generator/action/run_id_with_vllm.ipynb) | [![Render with nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/nvidia/cosmos/blob/main/cookbooks/cosmos3/generator/action/run_id_with_vllm.ipynb) |
 | Reasoner with Cosmos Framework | Reasoner | Text and image reasoning: detailed captioning, robot task planning, 2D grounding, describe-anything, and action-trajectory prompts, through the `cosmos_framework.scripts.inference` entrypoint. | [Notebook](cookbooks/cosmos3/reasoner/run_with_cosmos_framework.ipynb) | [![Render with nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/nvidia/cosmos/blob/main/cookbooks/cosmos3/reasoner/run_with_cosmos_framework.ipynb) |
 | Reasoner with vLLM | Reasoner | Image and video reasoning: captioning, temporal localization, embodied reasoning, common-sense reasoning, 2D grounding, describe-anything, action CoT, driving scenes, physical-plausibility, and situation understanding, against an OpenAI-compatible vLLM server (Cosmos3-Super on 4 GPUs by default; switch to Nano per the cookbook README). | [Notebook](cookbooks/cosmos3/reasoner/run_with_vllm.ipynb) | [![Render with nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/nvidia/cosmos/blob/main/cookbooks/cosmos3/reasoner/run_with_vllm.ipynb) |
+| Reasoner with NIM | Reasoner | The same image and video reasoning examples as the vLLM notebook, run against the prebuilt, OpenAI-compatible [Cosmos 3 Reasoner NIM](https://catalog.ngc.nvidia.com/orgs/nim/teams/nvidia/containers/cosmos3-reasoner) container; local media is sent as base64 data URIs. | [Notebook](cookbooks/cosmos3/reasoner/run_with_nim.ipynb) | [![Render with nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/nvidia/cosmos/blob/main/cookbooks/cosmos3/reasoner/run_with_nim.ipynb) |
 
 ### Inference Benchmarks
 
-Cosmos 3 latency and serving numbers live in [`inference_benchmarks.md`](inference_benchmarks.md). Generator sections report diffusion-path latency (seconds) by GPU, engine, resolution, and tensor-parallel width; the Reasoner section reports vLLM serving metrics under concurrent load. Empty cells mean a combination has not been measured yet, not that it is unsupported.
+Cosmos 3 latency and serving numbers live in [`inference_benchmarks.md`](inference_benchmarks.md). Generator sections report diffusion-path latency (seconds) by GPU, engine, resolution, and tensor-parallel width; Reasoner sections report vLLM serving metrics under concurrent load. Empty cells mean a combination has not been measured yet, not that it is unsupported.
 
 | Benchmark | Surface | Model | What it covers |
 | --- | --- | --- | --- |
 | [Cosmos3-Nano generator](inference_benchmarks.md#cosmos3-nano-generator) | Generator | Cosmos3-Nano | Text-to-image, text-to-video, and image-to-video latency across PyTorch, vLLM-Omni, and Diffusers |
 | [Cosmos3-Super generator](inference_benchmarks.md#cosmos3-super-generator) | Generator | Cosmos3-Super | The same modalities and engines at the larger checkpoint scale |
 | [Cosmos3-Nano reasoner](inference_benchmarks.md#cosmos3-nano-reasoner) | Reasoner | Cosmos3-Nano | vLLM serving metrics — TTFT, request latency, and throughput at concurrency 1/64/128/256 |
+| [Cosmos3-Super reasoner](inference_benchmarks.md#cosmos3-super-reasoner) | Reasoner | Cosmos3-Super | The same serving metrics at the larger checkpoint scale; coverage is sparser than Nano |
+
+### Finetune
+
+Finetune Cosmos 3 with the [Cosmos Framework](https://github.com/NVIDIA/cosmos-framework), NVIDIA's end-to-end Physical AI framework for training and serving world models. It provides runnable setup, inference, omni-model training, and evaluation workflows for the Generator and Reasoner surfaces, with reference recipes for vision, action, and reasoning post-training.
+
+See the [Cosmos Framework training guide](https://github.com/NVIDIA/cosmos-framework/blob/main/docs/training.md) for the full post-training workflow, including data preparation, configuration, and launch commands.
 
 ### Limitations
 
